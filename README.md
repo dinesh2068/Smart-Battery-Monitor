@@ -1,3 +1,5 @@
+MIT License
+
 # Smart Battery Monitor for Windows:
 
 A real-time battery monitoring and analytics tool built using Python.
