@@ -1,4 +1,3 @@
-MIT License
 
 # Smart Battery Monitor for Windows:
 
