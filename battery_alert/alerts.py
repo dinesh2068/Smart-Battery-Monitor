@@ -1,29 +1,35 @@
 import ctypes
-from analyzer import estimate_time_remaining
-from config import LOW_BATTERY_THRESHOLD, SMART_ALERT_MINUTES
+import time
 
+last_alert_percent = None
 last_alert_time = 0
+
+COOLDOWN = 300  # 5 minutes
 
 def show_alert(message):
     ctypes.windll.user32.MessageBoxW(0, message, "Battery Alert", 1)
 
-
 def check_alerts(data):
-    global last_alert_time
+    global last_alert_percent, last_alert_time
 
     percent = data["percent"]
     plugged = data["plugged"]
+    now = time.time()
 
-    # 🔋 LOW BATTERY
-    if percent <= LOW_BATTERY_THRESHOLD and not plugged:
-        show_alert(f"⚠️ Battery low: {percent}%")
+    # Skip alerts if charging
+    if plugged:
+        return
 
-    # ⚡ FULL CHARGE
-    if percent >= 95 and plugged:
-        show_alert("🔌 Battery almost full! Consider unplugging.")
+    # Low battery alert every 5%
+    if percent <= 30:
+        if last_alert_percent is None or percent <= last_alert_percent - 5:
+            if now - last_alert_time > COOLDOWN:
+                show_alert(f"⚠️ Battery low: {percent}% remaining")
+                last_alert_percent = percent
+                last_alert_time = now
 
-    # 🧠 SMART PREDICTION
-    time_left = estimate_time_remaining(percent)
-
-    if time_left and time_left < SMART_ALERT_MINUTES and not plugged:
-        show_alert(f"⚠️ Battery may die in {int(time_left)} minutes!")
+    # Critical alert
+    if percent <= 10:
+        if now - last_alert_time > 60:
+            show_alert("🚨 CRITICAL BATTERY! Plug in now!")
+            last_alert_time = now

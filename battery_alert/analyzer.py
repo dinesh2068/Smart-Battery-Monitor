@@ -10,7 +10,6 @@ def get_data():
     conn.close()
     return df
 
-
 def estimate_drain_rate():
     df = get_data()
 
@@ -30,14 +29,33 @@ def estimate_drain_rate():
 
     return percent_diff / time_diff
 
+def estimate_time_remaining():
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql_query("SELECT * FROM battery_logs", conn)
+    conn.close()
 
-def estimate_time_remaining(current_percent):
-    rate = estimate_drain_rate()
-
-    if rate is None or rate <= 0:
+    if len(df) < 5:
         return None
 
-    return round(current_percent / rate, 2)
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df["percent"] = df["percent"].astype(int)
+
+    # last 5 changes only
+    df = df.tail(5)
+
+    time_diff = (df["timestamp"].iloc[-1] - df["timestamp"].iloc[0]).total_seconds() / 60
+    percent_diff = df["percent"].iloc[0] - df["percent"].iloc[-1]
+
+    if percent_diff <= 0 or time_diff <= 0:
+        return None
+
+    rate = percent_diff / time_diff  # % per min
+
+    current_percent = df["percent"].iloc[-1]
+
+    minutes_left = current_percent / rate
+
+    return int(minutes_left)
 
 def get_real_battery_health():
     try:
